@@ -144,7 +144,7 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        var API_BASE = '';
+        var API_BASE = 'https://produces-describe-drawn-usual.trycloudflare.com';
         var currentImages = [];
         var currentLayout = 4;
         var editingId = null;
@@ -155,6 +155,8 @@
             if (saved) {
                 API_BASE = saved;
                 document.getElementById('apiUrl').value = saved;
+            } else if (API_BASE) {
+                document.getElementById('apiUrl').placeholder = '当前: ' + API_BASE;
             }
         }
 
@@ -309,7 +311,12 @@
 
         (function init() {
             loadApiUrl();
-            if (API_BASE) loadFromServer(); else updateStatus(false, 0);
+            if (API_BASE) {
+                loadFromServer();
+            } else {
+                updateStatus(false, 0);
+                document.getElementById('apiUrl').placeholder = '请填入后端 API 地址';
+            }
         })();
     </script>
 </body>
