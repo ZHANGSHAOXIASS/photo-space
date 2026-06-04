@@ -269,14 +269,20 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        var API = 'https://produces-describe-drawn-usual.trycloudflare.com';
+        var WRITE_API = 'https://produces-describe-drawn-usual.trycloudflare.com'; var READ_BASE = 'https://zhangshaoxiass.github.io/photo-space';
         var images = [];
         var editId = null;
         var modalImgId = null;
         var fabOpen = false;
 
         // ── API ──
-        async function api(m, p, b) {
+    async function readApi() {
+        var r = await fetch(READ_BASE + '/images.json?_t=' + Date.now());
+        if (!r.ok) throw new Error('无法加载图片列表');
+        var d = await r.json();
+        return { images: d, total: Array.isArray(d) ? d.length : 0 };
+    }
+        async function writeApi(m, p, b) {
             var o = {method:m, headers:{}};
             if(b && !(b instanceof FormData)){o.headers['Content-Type']='application/json';o.body=JSON.stringify(b)}
             else if(b instanceof FormData) o.body = b;
@@ -294,7 +300,7 @@
             for(var i=0;i<4;i++) w.innerHTML += '<div class="skeleton-card" style="animation-delay:'+(i*.1)+'s"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>';
             e.classList.remove('show');
             try {
-                var d = await api('GET','/api/images');
+                var d = await readApi();
                 images = d.images;
                 updateStatus(true, d.total);
                 w.innerHTML = '';
@@ -314,7 +320,7 @@
             var c = document.createElement('div');
             c.className = 'card';
             c.style.animationDelay = (idx * .05) + 's';
-            var url = API + '/uploads/' + img.filename;
+            var url = READ_BASE + '/photos/' + img.filename;
             c.innerHTML =
                 '<div class="card-img-wrap" onclick="openModal(\''+img.id+'\')">'+
                 '<span class="img-placeholder">🖼</span>'+
@@ -346,7 +352,7 @@
             if(!arr.length){toast('请选择图片',1);return}
             arr.forEach(function(f,i){fd.append('images',f);fd.append('title_'+i,f.name.replace(/\.[^.]+$/,''));fd.append('desc_'+i,'')});
             showUpload(true, '上传中 '+arr.length+' 张...');
-            try {await api('POST','/api/images',fd);toast('上传成功 '+arr.length+' 张！');await loadImages()}
+            try {await writeApi('POST','/api/images',fd);toast('上传成功 '+arr.length+' 张！');await loadImages()}
             catch(e){toast('上传失败: '+e.message,1)}
             showUpload(false);
         }
@@ -356,12 +362,12 @@
         // ── Delete ──
         async function removeImg(id) {
             if(!confirm('确定删除这张照片？')) return;
-            try {await api('DELETE','/api/images/'+id);toast('已删除');await loadImages()}
+            try {await writeApi('DELETE','/api/images/'+id);toast('已删除');await loadImages()}
             catch(e){toast('删除失败: '+e.message,1)}
         }
         async function deleteFromModal() {
             if(!confirm('确定删除这张照片？')) return;
-            try {await api('DELETE','/api/images/'+modalImgId);toast('已删除');closeModal();await loadImages()}
+            try {await writeApi('DELETE','/api/images/'+modalImgId);toast('已删除');closeModal();await loadImages()}
             catch(e){toast('删除失败: '+e.message,1)}
         }
 
@@ -380,7 +386,7 @@
         async function saveEdit() {
             var t = document.getElementById('editTitle').value.trim();
             if(!t){toast('标题不能为空',1);return}
-            try {await api('PUT','/api/images/'+editId,{title:t,desc:document.getElementById('editDesc').value.trim()});closeSheet();toast('已保存');await loadImages()}
+            try {await writeApi('PUT','/api/images/'+editId,{title:t,desc:document.getElementById('editDesc').value.trim()});closeSheet();toast('已保存');await loadImages()}
             catch(e){toast('保存失败: '+e.message,1)}
         }
         document.getElementById('sheet').addEventListener('keydown', function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();saveEdit()}});
@@ -389,7 +395,7 @@
         function openModal(id) {
             var img = images.find(function(x){return x.id===id}); if(!img) return;
             modalImgId = id;
-            document.getElementById('modalImg').src = API + '/uploads/' + img.filename;
+            document.getElementById('modalImg').src = READ_BASE + '/photos/' + img.filename;
             document.getElementById('modalTitle').textContent = img.title;
             document.getElementById('modalMeta').textContent = (img.desc?img.desc+' · ':'') + fmtDate(img.createdAt) + ' · ' + fmtSize(img.size);
             document.getElementById('modalCount').textContent = fmtSize(img.size);
